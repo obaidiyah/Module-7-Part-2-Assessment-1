@@ -1,0 +1,478 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chrono | Countdown Timer</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <main class="app-container">
+
+        <header class="top-bar">
+            <div class="brand">
+                <div class="brand-icon">◷</div>
+                <span>CHRONO<span class="brand-dot">.</span></span>
+            </div>
+            <div class="status">
+                <span class="status-dot"></span>
+                TIMER READY
+            </div>
+        </header>
+
+        <section class="hero">
+            <p class="eyebrow">YOUR TIME, YOUR CONTROL</p>
+            <h1>Make every<br><span>second count.</span></h1>
+            <p class="subtitle">
+                Set your intention. Start your countdown.<br>
+                Make every moment matter.
+            </p>
+        </section>
+
+        <section class="timer-card">
+
+            <div class="card-heading">
+                <div>
+                    <p class="small-label">COUNTDOWN TIMER</p>
+                    <h2 id="timerStatus">Ready when you are</h2>
+                </div>
+                <div class="timer-icon">⏱</div>
+            </div>
+
+            <div class="timer-display" aria-live="off">
+                <div class="time-unit">
+                    <div class="digit-box">
+                        <span id="hours">00</span>
+                    </div>
+                    <span class="unit-label">HOURS</span>
+                </div>
+
+                <span class="colon">:</span>
+
+                <div class="time-unit">
+                    <div class="digit-box">
+                        <span id="minutes">05</span>
+                    </div>
+                    <span class="unit-label">MINUTES</span>
+                </div>
+
+                <span class="colon">:</span>
+
+                <div class="time-unit">
+                    <div class="digit-box">
+                        <span id="seconds">00</span>
+                    </div>
+                    <span class="unit-label">SECONDS</span>
+                </div>
+            </div>
+
+            <div class="progress-section">
+                <div class="progress-info">
+                    <span>TIME PROGRESS</span>
+                    <span id="progressText">100%</span>
+                </div>
+                <div class="progress-track">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="settings">
+                <p class="section-label">CUSTOMISE YOUR TIME</p>
+
+                <div class="input-grid">
+                    <div class="input-group">
+                        <label for="inputHours">Hours</label>
+                        <input type="number" id="inputHours"
+                               min="0" max="99" value="0">
+                    </div>
+
+                    <div class="input-group">
+                        <label for="inputMinutes">Minutes</label>
+                        <input type="number" id="inputMinutes"
+                               min="0" max="59" value="5">
+                    </div>
+
+                    <div class="input-group">
+                        <label for="inputSeconds">Seconds</label>
+                        <input type="number" id="inputSeconds"
+                               min="0" max="59" value="0">
+                    </div>
+                </div>
+
+                <div class="presets">
+                    <button class="preset-btn" data-minutes="1">1 min</button>
+                    <button class="preset-btn" data-minutes="5">5 min</button>
+                    <button class="preset-btn" data-minutes="10">10 min</button>
+                    <button class="preset-btn" data-minutes="25">25 min</button>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button id="startBtn" class="btn btn-primary">
+                    <span>▶</span> Start Timer
+                </button>
+
+                <button id="pauseBtn" class="btn btn-secondary" disabled>
+                    <span>Ⅱ</span> Pause
+                </button>
+
+                <button id="resetBtn" class="btn btn-reset">
+                    ↻
+                </button>
+            </div>
+
+            <p id="message" class="message" role="status">
+                Choose your time and press Start.
+            </p>
+
+        </section>
+
+        <footer class="footer">
+            <p>DESIGNED TO HELP YOU FOCUS</p>
+            <span>FOCUS. BREATHE. ACHIEVE.</span>
+        </footer>
+
+    </main>
+
+    <script>
+        // Get the HTML elements
+        const hoursDisplay = document.getElementById("hours");
+        const minutesDisplay = document.getElementById("minutes");
+        const secondsDisplay = document.getElementById("seconds");
+
+        const inputHours = document.getElementById("inputHours");
+        const inputMinutes = document.getElementById("inputMinutes");
+        const inputSeconds = document.getElementById("inputSeconds");
+
+        const startBtn = document.getElementById("startBtn");
+        const pauseBtn = document.getElementById("pauseBtn");
+        const resetBtn = document.getElementById("resetBtn");
+
+        const timerStatus = document.getElementById("timerStatus");
+        const message = document.getElementById("message");
+        const progressFill = document.getElementById("progressFill");
+        const progressText = document.getElementById("progressText");
+
+        const presetButtons = document.querySelectorAll(".preset-btn");
+
+        // Timer variables
+        let remainingTime = 300;
+        let totalTime = 300;
+        let timerInterval = null;
+        let isRunning = false;
+        let isPaused = false;
+        let audioContext = null;
+
+        // Convert seconds into HH:MM:SS format
+        function formatTime(time) {
+            const hours = Math.floor(time / 3600);
+            const minutes = Math.floor((time % 3600) / 60);
+            const seconds = time % 60;
+
+            return {
+                hours: String(hours).padStart(2, "0"),
+                minutes: String(minutes).padStart(2, "0"),
+                seconds: String(seconds).padStart(2, "0")
+            };
+        }
+
+        // Update the timer display
+        function updateDisplay() {
+            const time = formatTime(remainingTime);
+
+            hoursDisplay.textContent = time.hours;
+            minutesDisplay.textContent = time.minutes;
+            secondsDisplay.textContent = time.seconds;
+
+            const percentage = totalTime > 0
+                ? (remainingTime / totalTime) * 100
+                : 0;
+
+            progressFill.style.width = percentage + "%";
+            progressText.textContent = Math.ceil(percentage) + "%";
+
+            if (remainingTime <= 10 && remainingTime > 0 && isRunning) {
+                document.body.classList.add("timer-warning");
+            } else {
+                document.body.classList.remove("timer-warning");
+            }
+        }
+
+        // Read the selected time
+        function getInputTime() {
+            const h = Number(inputHours.value);
+            const m = Number(inputMinutes.value);
+            const s = Number(inputSeconds.value);
+
+            if (
+                inputHours.value === "" ||
+                inputMinutes.value === "" ||
+                inputSeconds.value === "" ||
+                !Number.isInteger(h) ||
+                !Number.isInteger(m) ||
+                !Number.isInteger(s) ||
+                h < 0 || h > 99 ||
+                m < 0 || m > 59 ||
+                s < 0 || s > 59
+            ) {
+                message.textContent =
+                    "Please enter valid hours, minutes and seconds.";
+                return null;
+            }
+
+            const totalSeconds = h * 3600 + m * 60 + s;
+
+            if (totalSeconds <= 0) {
+                message.textContent =
+                    "Please set a countdown greater than zero.";
+                return null;
+            }
+
+            return totalSeconds;
+        }
+
+        // Start the countdown
+        function startTimer() {
+            if (isRunning) return;
+
+            // If paused, continue from the remaining time
+            if (!isPaused) {
+                const selectedTime = getInputTime();
+
+                if (selectedTime === null) return;
+
+                remainingTime = selectedTime;
+                totalTime = selectedTime;
+            }
+
+            // Prepare sound on user interaction
+            try {
+                const AudioContextClass =
+                    window.AudioContext || window.webkitAudioContext;
+
+                if (AudioContextClass && !audioContext) {
+                    audioContext = new AudioContextClass();
+                }
+
+                if (audioContext && audioContext.state === "suspended") {
+                    audioContext.resume();
+                }
+            } catch (error) {
+                console.log("Audio is unavailable.");
+            }
+
+            isRunning = true;
+            isPaused = false;
+
+            startBtn.disabled = true;
+            pauseBtn.disabled = false;
+
+            startBtn.innerHTML = "<span>▶</span> Running...";
+            timerStatus.textContent = "Time is ticking";
+            message.textContent = "Stay focused. You've got this!";
+
+            inputHours.disabled = true;
+            inputMinutes.disabled = true;
+            inputSeconds.disabled = true;
+
+            presetButtons.forEach(button => button.disabled = true);
+
+            updateDisplay();
+
+            timerInterval = setInterval(() => {
+                remainingTime--;
+
+                updateDisplay();
+
+                if (remainingTime <= 0) {
+                    finishTimer();
+                }
+            }, 1000);
+        }
+
+        // Pause the countdown
+        function pauseTimer() {
+            if (!isRunning) return;
+
+            clearInterval(timerInterval);
+            timerInterval = null;
+
+            isRunning = false;
+            isPaused = true;
+
+            startBtn.disabled = false;
+            startBtn.innerHTML = "<span>▶</span> Resume Timer";
+
+            pauseBtn.disabled = true;
+
+            timerStatus.textContent = "Timer paused";
+            message.textContent = "Take a breath. Resume when ready.";
+
+            document.body.classList.remove("timer-warning");
+        }
+
+        // Play a short alert sound
+        function playAlarm() {
+            if (!audioContext) return;
+
+            try {
+                const oscillator = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+
+                oscillator.connect(gain);
+                gain.connect(audioContext.destination);
+
+                oscillator.type = "sine";
+                oscillator.frequency.value = 880;
+
+                gain.gain.setValueAtTime(
+                    0.25, audioContext.currentTime
+                );
+                gain.gain.exponentialRampToValueAtTime(
+                    0.001, audioContext.currentTime + 1.2
+                );
+
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 1.2);
+            } catch (error) {
+                console.log("Could not play alarm.");
+            }
+        }
+
+        // Called when the countdown reaches zero
+        function finishTimer() {
+            clearInterval(timerInterval);
+            timerInterval = null;
+
+            remainingTime = 0;
+            isRunning = false;
+            isPaused = false;
+
+            updateDisplay();
+
+            startBtn.disabled = false;
+            startBtn.innerHTML = "<span>▶</span> Start Again";
+            pauseBtn.disabled = true;
+
+            timerStatus.textContent = "Time is up!";
+            message.textContent = "🎉 Congratulations! You did it!";
+
+            document.body.classList.remove("timer-warning");
+            document.body.classList.add("timer-complete");
+
+            unlockInputs();
+            playAlarm();
+        }
+
+        // Enable the input fields again
+        function unlockInputs() {
+            inputHours.disabled = false;
+            inputMinutes.disabled = false;
+            inputSeconds.disabled = false;
+
+            presetButtons.forEach(button => button.disabled = false);
+        }
+
+        // Reset everything to the original five-minute timer
+        function resetTimer() {
+            clearInterval(timerInterval);
+            timerInterval = null;
+
+            isRunning = false;
+            isPaused = false;
+
+            remainingTime = 300;
+            totalTime = 300;
+
+            inputHours.value = 0;
+            inputMinutes.value = 5;
+            inputSeconds.value = 0;
+
+            unlockInputs();
+
+            startBtn.disabled = false;
+            startBtn.innerHTML = "<span>▶</span> Start Timer";
+            pauseBtn.disabled = true;
+
+            timerStatus.textContent = "Ready when you are";
+            message.textContent = "Choose your time and press Start.";
+
+            document.body.classList.remove(
+                "timer-warning", "timer-complete"
+            );
+
+            updateDisplay();
+        }
+
+        // Set the timer using a preset button
+        function setPreset(minutes) {
+            if (isRunning) return;
+
+            clearInterval(timerInterval);
+            timerInterval = null;
+
+            isRunning = false;
+            isPaused = false;
+
+            inputHours.value = Math.floor(minutes / 60);
+            inputMinutes.value = minutes % 60;
+            inputSeconds.value = 0;
+
+            remainingTime = minutes * 60;
+            totalTime = remainingTime;
+
+            unlockInputs();
+
+            startBtn.disabled = false;
+            startBtn.innerHTML = "<span>▶</span> Start Timer";
+            pauseBtn.disabled = true;
+
+            timerStatus.textContent = "Ready when you are";
+            message.textContent = minutes + " minute countdown selected.";
+
+            document.body.classList.remove(
+                "timer-warning", "timer-complete"
+            );
+
+            updateDisplay();
+        }
+
+        // Button event listeners
+        startBtn.addEventListener("click", startTimer);
+        pauseBtn.addEventListener("click", pauseTimer);
+        resetBtn.addEventListener("click", resetTimer);
+
+        presetButtons.forEach(button => {
+            button.addEventListener("click", () => {
+                setPreset(Number(button.dataset.minutes));
+            });
+        });
+
+        // Update the preview when a time input changes
+        [inputHours, inputMinutes, inputSeconds].forEach(input => {
+            input.addEventListener("input", () => {
+                if (isRunning || isPaused) return;
+
+                const selectedTime = getInputTime();
+
+                if (selectedTime !== null) {
+                    remainingTime = selectedTime;
+                    totalTime = selectedTime;
+
+                    timerStatus.textContent = "Ready when you are";
+                    message.textContent = "Your countdown is ready.";
+                    updateDisplay();
+                }
+            });
+        });
+
+        // Initialise the app
+        updateDisplay();
+    </script>
+
+</body>
+</html>
